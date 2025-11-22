@@ -31,24 +31,29 @@ Eg.
 EnumADUser.py 192.168.1.1 test.com user.txt tcp
 ```
 
-### ADPwdSpray.py
+### ADKerbSpry.py
 
-Use Kerberos pre-authentication to test a single password or NTLM hash against a list of Active Directory accounts.
+Use Kerberos pre-authentication to: 
+- Test a single password or NTLM hash against a list of Active Directory accounts.
+- Test a single user Active Directory accountn against a list of passwords or NTLM hashes.
+- Supports IPv4 and IPv6
 
 #### Usage:
 
 ```
-ADPwdSpray.py <domainControlerAddr> <domainName> <file> <passwordtype> <data> <mode>
+ADKerbSpry.py <domainControlerAddr> <domainName> <file> <passwordmode> <data> <mode>
 <mode>: tcp or udp
+<data>: single password, hash or username
+<file>: list of users, hashesh or passwords
+<passwordmode>: clearpassword | ntlmhash | pwdfile-clear | pwdfile-ntlm
 ```
 
 Eg.
 
 ```
-ADPwdSpray.py 192.168.1.1 test.com user.txt clearpassword DomainUser123! tcp
+ADKerbSpry.py 192.168.1.1 test.com user.txt clearpassword DomainUser123! tcp
 
-ADPwdSpray.py 192.168.1.1 test.com user.txt ntlmhash e00045bd566a1b74386f5c1e3612921b udp
+ADKerbSpry.py 192.168.1.1 test.com user.txt ntlmhash e00045bd566a1b74386f5c1e3612921b udp
+
+ADKerbSpry.py 192.168.1.1 test.com ntlmhashes.txt pwdfile-ntlm henry.cavill tcp
 ```
-
-Details:[《渗透技巧——通过Kerberos pre-auth进行用户枚举和口令爆破》](https://3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-%E9%80%9A%E8%BF%87Kerberos-pre-auth%E8%BF%9B%E8%A1%8C%E7%94%A8%E6%88%B7%E6%9E%9A%E4%B8%BE%E5%92%8C%E5%8F%A3%E4%BB%A4%E7%88%86%E7%A0%B4)
-

