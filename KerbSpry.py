@@ -347,9 +347,9 @@ if __name__ == '__main__':
         fixed_user = data_value
         print('[*] Single User:          %s'%(fixed_user))
 
-        def pwd_key_hash(pwd):
-            return (RC4_HMAC, ntlm_hash(pwd).digest())
         def pwd_key_clear(pwd):
+            return (RC4_HMAC, ntlm_hash(pwd).digest())
+        def pwd_key_hash(pwd):
             return (RC4_HMAC, pwd.decode('hex'))
 
         if passwordtype == 'pwdfile-clear':
@@ -375,4 +375,5 @@ if __name__ == '__main__':
     
     print("All Done")
         
+
 
