@@ -35,7 +35,7 @@ EnumADUser.py 192.168.1.1 test.com user.txt tcp
 
 Use Kerberos pre-authentication to: 
 - Test a single password or NTLM hash against a list of Active Directory accounts.
-- Test a single user Active Directory accountn against a list of passwords or NTLM hashes.
+- Test a single user Active Directory account against a list of passwords or NTLM hashes.
 - Supports IPv4 and IPv6
 
 #### Usage:
