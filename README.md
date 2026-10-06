@@ -2,6 +2,10 @@
 
 Use python to quickly bruteforce and enumerate valid Active Directory accounts through Kerberos Pre-Authentication
 
+Original:
+
+https://github.com/3gstudent/pyKerbrute
+
 Reference:
 
 https://github.com/ropnop/kerbrute
